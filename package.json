@@ -1,0 +1,22 @@
+{
+  "name": "polygon-gas-swap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QEDK/polygon-gas-swap.git"
+  },
+  "author": "QEDK",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/QEDK/polygon-gas-swap/issues"
+  },
+  "homepage": "https://github.com/QEDK/polygon-gas-swap#readme",
+  "dependencies": {
+    "truffle": "^5.4.1"
+  }
+}
