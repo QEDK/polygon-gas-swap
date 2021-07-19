@@ -17,6 +17,9 @@
   },
   "homepage": "https://github.com/QEDK/polygon-gas-swap#readme",
   "dependencies": {
-    "truffle": "^5.4.1"
+    "dotenv": "^10.0.0",
+    "fastify": "^3.19.1",
+    "truffle": "^5.4.1",
+    "web3": "^1.4.0"
   }
 }
