@@ -11,7 +11,7 @@ if (!process.env.API_KEY) {
   process.exit(1)
 }
 
-const web3 = new Web3(process.env.RPC_URL || 'https://rpc-mainnet.matic.quiknode.pro')
+const web3 = new Web3(process.env.RPC_URL || 'https://matic-mainnet.chainstacklabs.com')
 const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY)
 web3.eth.accounts.wallet.add(account)
 
@@ -33,25 +33,23 @@ fastify.post('/quote', async (request, reply) => {
     const params = {
       buyToken: 'MATIC',
       sellToken: 'DAI',
-      buyAmount: 1000000000000000000
+      sellAmount: 629737448321644662
     }
     const response = await axios({
       method: 'GET',
       url: 'https://polygon.api.0x.org/swap/v1/quote',
       params: params
     })
-    console.log(response.data)
     const daiContract = new web3.eth.Contract(ERC20ABI, response.data.sellTokenAddress)
-    console.log(daiContract)
     const tx = await daiContract.methods.approve(response.data.allowanceTarget, response.data.sellAmount).send({
       from: account.address,
       gas: 100000,
       gasPrice: response.data.gasPrice
     })
-    console.log(tx)
-    const tx2 = await web3.sendTransaction(response.data)
-    console.log(tx2)
-    reply.send()
+    response.data.from = account.address
+    response.data.gas = 500000 // 0x gas estimates are not great
+    const tx2 = await web3.eth.sendTransaction(response.data)
+    reply.send({})
   } catch (err) {
     console.error(err)
     reply.statusCode = 500
