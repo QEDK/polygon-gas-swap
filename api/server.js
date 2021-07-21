@@ -54,12 +54,11 @@ fastify.post('/quote', async (request, reply) => {
     console.error(err)
     reply.statusCode = 500
   } finally {
-    if(!reply.sent) {
+    if (!reply.sent) {
       reply.send()
     }
   }
 })
-
 
 fastify.get('/transfer', async (request, reply) => {
   try {
