@@ -4,6 +4,7 @@ import Web3Modal from 'web3modal';
 import { Biconomy } from "@biconomy/mexa";
 import WalletConnectProvider from '@walletconnect/web3-provider';
 
+
 export const Web3Context = React.createContext({});
 export const useWeb3Context = () => useContext(Web3Context);
 
@@ -30,25 +31,26 @@ export const Web3Provider = ({ children }) => {
       const externalProvider = await web3Modal.connect();
 
       const biconomy = new Biconomy(
-        new Web3.providers.HttpProvider("https://matic-mainnet-full-rpc.bwarelabs.com"),
+        window.ethereum,
         {
-          apiKey: 'api_key_here',
-          debug: true
+          apiKey: process.env.REACT_APP_API_KEY,
+          strictMode: true,
         }
       );
-      setBiconomyProvider(new Web3(biconomy));
+      setBiconomyProvider(biconomy);
 
-      let w3 = new Web3(externalProvider);
+      let w3 = new Web3(biconomy);
       setProvider(w3);
 
       biconomy
         .onEvent(biconomy.READY, () => {
-          console.log("initialized");
+          console.log("Biconomy ready!");
         })
         .onEvent(biconomy.ERROR, (error, message) => {
           console.log(error);
           console.log(message);
         });
+
     } catch (e) {
       console.log("NO_WALLET_CONNECTED", e);
     }
