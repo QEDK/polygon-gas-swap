@@ -4,8 +4,7 @@ import Web3 from 'web3';
 import { useWeb3Context } from "./Web3Context";
 import axios from "axios";
 import ERC20ABI from "./erc20.json";
-import ProxyABI from "./proxy.json";
-import ZeroExABI from "./transformERC20.json";
+import GasSwapABI from "./gasswap.json"
 import sigUtil from "eth-sig-util";
 import { ethers } from "ethers";
 
@@ -21,6 +20,8 @@ const metaTransactionType = [
     { name: "from", type: "address" },
     { name: "functionSignature", type: "bytes" }
 ];
+
+const GASSWAP_CONTRACT_ADDR = "0xc39034a53ab781cbb7a5a09e7c878260879c943f";
 
 const getSignatureParameters = signature => {
     if (!ethers.utils.isHexString(signature)) {
@@ -51,7 +52,7 @@ function App() {
     const params = {
       buyToken: 'MATIC',
       sellToken: 'WETH',
-      sellAmount: 2196442047173665
+      sellAmount: 1000000000000000
     }
     const response = await axios({
       method: 'GET',
@@ -62,10 +63,10 @@ function App() {
     //const daiContractProxy = new web3.eth.Contract(ProxyABI, response.data.sellTokenAddress)
     //const implAddress = await daiContractProxy.methods.implementation().call()
     //console.log(implAddress)
-    const daiContract = new web3.eth.Contract(ERC20ABI, response.data.sellTokenAddress)
-    const contractInterface = new ethers.utils.Interface(ERC20ABI);
-    var nonce = await daiContract.methods.getNonce(addr[0]).call()
-    var functionSignature = await contractInterface.encodeFunctionData("approve", [response.data.allowanceTarget, response.data.sellAmount])
+    const ERC20Contract = new web3.eth.Contract(ERC20ABI, response.data.sellTokenAddress)
+    const ERC20ContractInterface = new ethers.utils.Interface(ERC20ABI);
+    var nonce = await ERC20Contract.methods.getNonce(addr[0]).call()
+    var functionSignature = await ERC20ContractInterface.encodeFunctionData("approve", [GASSWAP_CONTRACT_ADDR, response.data.sellAmount])
     var message = {
       nonce: parseInt(nonce),
       from: addr[0],
@@ -88,23 +89,24 @@ function App() {
     });
     var signature = await walletProvider.send("eth_signTypedData_v3", [addr[0], dataToSign]);
     var { r, s, v } = getSignatureParameters(signature);
-    const tx = await daiContract.methods.executeMetaTransaction(addr[0], functionSignature, r, s, v).send({
+    const tx = await ERC20Contract.methods.executeMetaTransaction(addr[0], functionSignature, r, s, v).send({
       from: addr[0],
       gasPrice: response.data.gasPrice,
       gas: 100000
     });
-    console.log(tx);
-    const zeroExContract = new web3.eth.Contract(ZeroExABI, response.data.to)
-    var nonce = await zeroExContract.methods.getNonce(addr[0]).call()
+    const gasSwapContract = new web3.eth.Contract(GasSwapABI, GASSWAP_CONTRACT_ADDR);
+    const gasSwapContractInterface = new ethers.utils.Interface(GasSwapABI);
+    var functionSignature = await gasSwapContractInterface.encodeFunctionData("fillQuote", [response.data.allowanceTarget, response.data.to, response.data.data])
+    var nonce = await gasSwapContract.methods.getNonce(addr[0]).call()
     var message = {
-      nonce: nonce,
+      nonce: parseInt(nonce),
       from: addr[0],
-      functionSignature: response.data.data
+      functionSignature: functionSignature
     }
     var domainData = {
-      name: "TestContract",
+      name: "GasSwap",
       version: "1",
-      verifyingContract: response.data.to,
+      verifyingContract: GASSWAP_CONTRACT_ADDR,
       salt: ethers.utils.hexZeroPad((ethers.BigNumber.from(137)).toHexString(), 32)
     };
     var dataToSign = JSON.stringify({
@@ -118,7 +120,11 @@ function App() {
     });
     var signature = await walletProvider.send("eth_signTypedData_v3", [addr[0], dataToSign]);
     var { r, s, v } = getSignatureParameters(signature);
-    const tx2 = await zeroExContract.methods.executeMetaTransaction(addr[0], functionSignature, r, s, v).send();
+    const tx2 = await gasSwapContract.methods.executeMetaTransaction(addr[0], functionSignature, r, s, v).send({
+      from: addr[0],
+      gasPrice: response.data.gasPrice,
+      gas: 500000
+    });
     console.log(tx2)
   }
 
