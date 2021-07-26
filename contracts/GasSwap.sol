@@ -14,8 +14,9 @@ interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
 
-contract GasSwap is EIP712MetaTransaction("GasSwap", "1") {
+contract GasSwap is EIP712MetaTransaction("GasSwap", "2") {
     address public owner;
+    address public authorizedTarget;
 
     constructor() {
         owner = msg.sender;
@@ -27,6 +28,21 @@ contract GasSwap is EIP712MetaTransaction("GasSwap", "1") {
     }
 
     receive() external payable {}
+
+    function changeOwner(address newOwner)
+        external
+        onlyOwner
+    {
+        owner = newOwner;
+    }
+
+    function changeTarget(address newTarget)
+        external
+        onlyOwner
+    {
+        require(isContract(newTarget), "NO_CONTRACT_AT_ADDRESS");
+        authorizedTarget = newTarget;
+    }
 
     function withdrawToken(IERC20 token, uint256 amount)
         external
@@ -44,21 +60,32 @@ contract GasSwap is EIP712MetaTransaction("GasSwap", "1") {
     }
 
     // Swaps ERC20->MATIC tokens held by this contract using a 0x-API quote.
-    function fillQuote(address spender, address swapTarget, bytes calldata swapCallData) payable external returns (uint256)
+    function fillQuote(address spender, bytes calldata swapCallData) external returns (uint256)
     {
-        require(msgSender().balance <= 1000000000000000000, "SENDER_BALANCE_EXCEEDS_LIMIT");
         (address inputToken,address outputToken,uint256 inputAmount,uint256 minOutputAmount,) = abi.decode(swapCallData[4:], (address,address,uint256,uint256,Transformation[]));
         require(outputToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, "INVALID_OUTPUT_TOKEN");
         IERC20 sellToken = IERC20(inputToken);
         require(sellToken.transferFrom(msgSender(), address(this), inputAmount), "TRANSFER_FAILED");
         require(sellToken.approve(spender, uint256(0)), "APPROVAL_WIPE_FAILED");
         require(sellToken.approve(spender, inputAmount), "REAPPROVAL_FAILED");
-        (bool success, bytes memory res) = swapTarget.call{value: msg.value}(swapCallData);
+        (bool success, bytes memory res) = authorizedTarget.call(swapCallData);
         uint256 outputTokenAmount = abi.decode(res, (uint256));
         require(success, string(concat(bytes("SWAP_FAILED: "),bytes(getRevertMsg(res)))));
         require(outputTokenAmount >= minOutputAmount, "SWAP_VALUE_MISMATCH");
         payable(msgSender()).transfer(outputTokenAmount);
         return outputTokenAmount;
+    }
+
+    function isContract(address account) internal view returns (bool) {
+        // This method relies on extcodesize, which returns 0 for contracts in
+        // construction, since the code is only stored at the end of the
+        // constructor execution.
+
+        uint256 size;
+        assembly {
+            size := extcodesize(account)
+        }
+        return size > 0;
     }
 
     function concat(bytes memory a, bytes memory b) internal pure returns (bytes memory) {
