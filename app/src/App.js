@@ -51,8 +51,8 @@ function App() {
     console.log(addr[0]);
     const params = {
       buyToken: 'MATIC',
-      sellToken: 'WETH',
-      sellAmount: 1000000000000000
+      sellToken: '0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6',
+      buyAmount: 1000000000000000000
     }
     const response = await axios({
       method: 'GET',
@@ -60,20 +60,19 @@ function App() {
       params: params
     })
     console.log(response.data)
-    //const daiContractProxy = new web3.eth.Contract(ProxyABI, response.data.sellTokenAddress)
-    //const implAddress = await daiContractProxy.methods.implementation().call()
-    //console.log(implAddress)
     const ERC20Contract = new web3.eth.Contract(ERC20ABI, response.data.sellTokenAddress)
     const ERC20ContractInterface = new ethers.utils.Interface(ERC20ABI);
-    var nonce = await ERC20Contract.methods.getNonce(addr[0]).call()
-    var functionSignature = await ERC20ContractInterface.encodeFunctionData("approve", [GASSWAP_CONTRACT_ADDR, response.data.sellAmount])
+    var nonce = await ERC20Contract.methods.getNonce(addr[0]).call();
+    const slippage = ((parseFloat(response.data.guaranteedPrice) - parseFloat(response.data.price))/parseFloat(response.data.price))*100;
+    const updatedAllowance = parseInt(parseInt(response.data.sellAmount) + ((slippage*parseInt(response.data.sellAmount))/100));
+    var functionSignature = await ERC20ContractInterface.encodeFunctionData("approve", [GASSWAP_CONTRACT_ADDR, String(updatedAllowance)])
     var message = {
-      nonce: parseInt(nonce),
+      nonce: nonce,
       from: addr[0],
       functionSignature: functionSignature
-    }
+    };
     var domainData = {
-      name: "Wrapped Ether",
+      name: "(PoS) Wrapped BTC",
       version: "1",
       verifyingContract: response.data.sellTokenAddress,
       salt: ethers.utils.hexZeroPad((ethers.BigNumber.from(137)).toHexString(), 32)
@@ -92,17 +91,18 @@ function App() {
     const tx = await ERC20Contract.methods.executeMetaTransaction(addr[0], functionSignature, r, s, v).send({
       from: addr[0],
       gasPrice: response.data.gasPrice,
-      gas: 100000
+      gas: 200000
     });
+    console.log(tx);
     const gasSwapContract = new web3.eth.Contract(GasSwapABI, GASSWAP_CONTRACT_ADDR);
     const gasSwapContractInterface = new ethers.utils.Interface(GasSwapABI);
     var functionSignature = await gasSwapContractInterface.encodeFunctionData("fillQuote", [response.data.allowanceTarget, response.data.to, response.data.data])
-    var nonce = await gasSwapContract.methods.getNonce(addr[0]).call()
+    var nonce = await gasSwapContract.methods.getNonce(addr[0]).call();
     var message = {
-      nonce: parseInt(nonce),
+      nonce: nonce,
       from: addr[0],
       functionSignature: functionSignature
-    }
+    };
     var domainData = {
       name: "GasSwap",
       version: "1",
@@ -123,9 +123,9 @@ function App() {
     const tx2 = await gasSwapContract.methods.executeMetaTransaction(addr[0], functionSignature, r, s, v).send({
       from: addr[0],
       gasPrice: response.data.gasPrice,
-      gas: 500000
+      gas: 750000
     });
-    console.log(tx2)
+    console.log(tx2);
   }
 
   return (
@@ -135,7 +135,7 @@ function App() {
       </button>
 
       <button className="square" onClick={doSomething}>
-        Do something
+        Trigger metatx
       </button>
     </React.Fragment>
   );
