@@ -21,7 +21,7 @@ const metaTransactionType = [
     { name: "functionSignature", type: "bytes" }
 ];
 
-const GASSWAP_CONTRACT_ADDR = "0xc39034a53ab781cbb7a5a09e7c878260879c943f";
+const GASSWAP_CONTRACT_ADDR = "0x1fdc5e69729eecf8e933c904e86faf7a8886f661";
 
 const getSignatureParameters = signature => {
     if (!ethers.utils.isHexString(signature)) {
@@ -51,7 +51,7 @@ function App() {
     console.log(addr[0]);
     const params = {
       buyToken: 'MATIC',
-      sellToken: '0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6',
+      sellToken: 'DAI',
       buyAmount: 1000000000000000000
     }
     const response = await axios({
@@ -65,6 +65,7 @@ function App() {
     var nonce = await ERC20Contract.methods.getNonce(addr[0]).call();
     const slippage = ((parseFloat(response.data.guaranteedPrice) - parseFloat(response.data.price))/parseFloat(response.data.price))*100;
     const updatedAllowance = parseInt(parseInt(response.data.sellAmount) + ((slippage*parseInt(response.data.sellAmount))/100));
+    console.log(slippage, updatedAllowance);
     var functionSignature = await ERC20ContractInterface.encodeFunctionData("approve", [GASSWAP_CONTRACT_ADDR, String(updatedAllowance)])
     var message = {
       nonce: nonce,
@@ -72,7 +73,7 @@ function App() {
       functionSignature: functionSignature
     };
     var domainData = {
-      name: "(PoS) Wrapped BTC",
+      name: "(PoS) Dai Stablecoin",
       version: "1",
       verifyingContract: response.data.sellTokenAddress,
       salt: ethers.utils.hexZeroPad((ethers.BigNumber.from(137)).toHexString(), 32)
@@ -96,7 +97,7 @@ function App() {
     console.log(tx);
     const gasSwapContract = new web3.eth.Contract(GasSwapABI, GASSWAP_CONTRACT_ADDR);
     const gasSwapContractInterface = new ethers.utils.Interface(GasSwapABI);
-    var functionSignature = await gasSwapContractInterface.encodeFunctionData("fillQuote", [response.data.allowanceTarget, response.data.to, response.data.data])
+    var functionSignature = await gasSwapContractInterface.encodeFunctionData("fillQuote", [response.data.allowanceTarget, response.data.data])
     var nonce = await gasSwapContract.methods.getNonce(addr[0]).call();
     var message = {
       nonce: nonce,
@@ -105,7 +106,7 @@ function App() {
     };
     var domainData = {
       name: "GasSwap",
-      version: "1",
+      version: "2",
       verifyingContract: GASSWAP_CONTRACT_ADDR,
       salt: ethers.utils.hexZeroPad((ethers.BigNumber.from(137)).toHexString(), 32)
     };
