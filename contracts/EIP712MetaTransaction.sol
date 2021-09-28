@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.8;
 
 import "./EIP712Base.sol";
 
@@ -42,7 +42,7 @@ contract EIP712MetaTransaction is EIP712Base {
             functionSignature: functionSignature
         });
         require(verify(userAddress, metaTx, sigR, sigS, sigV), "Signer and signature do not match");
-        nonces[userAddress] += 1;
+        nonces[userAddress]++;
         // Append userAddress at the end to extract it from calling context
         (bool success, bytes memory returnData) = address(this).call(abi.encodePacked(functionSignature, userAddress));
 
