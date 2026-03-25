@@ -19,7 +19,7 @@
   "dependencies": {
     "@biconomy/mexa": "^2.0.10",
     "@openzeppelin/contracts": "^4.3.2",
-    "axios": "^0.20.0",
+    "axios": "^0.30.3",
     "dotenv": "^10.0.0",
     "web3": "^1.4.0"
   },
